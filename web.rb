@@ -1,20 +1,6 @@
 require 'json'
 require 'open-uri'
-require 'ostruct'
-
 require 'sinatra'
-
-
-ENV['https_proxy'] = ENV['http_proxy'] if ENV['http_proxy']
-
-class Repository < OpenStruct
-  def initialize(repo)
-    super
-    @owner  = repo['owner']['login']
-    @avatar = repo['owner']['avatar_url']
-  end
-end
-
 
 get '/' do
   haml :index
@@ -23,9 +9,10 @@ end
 get '/watched/:user' do |user|
   begin
     json = open("https://api.github.com/users/#{user}/watched?per_page=1000").read
-    @repos = JSON.parse(json).map { |repo| Repository.new(repo) }
+    @repos = JSON.parse(json).map { |r| OpenStruct.new(r) }
     haml :watched
-  rescue
+  rescue => e
+    p e.inspect
     haml :usernotfound
   end
 end
@@ -60,11 +47,11 @@ __END__
   - @repos.each do |repo|
     %tr
       %td.avatar
-        %img(src='#{repo.avatar}')
+        %img(src="#{repo.owner['avatar_url']}")
       %td.name
         %a(href='#{repo.html_url}')= repo.name
       %td.owner
-        %a(href='https://github.com/#{repo.owner}')= repo.owner
+        %a(href="https://github.com/#{repo.owner['login']}")= repo.owner['login']
       %td.language= repo.language
       %td.description= repo.description
       %td.watchrs= repo.watchers
